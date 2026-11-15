@@ -17,6 +17,7 @@ import type {
   WeatherForecast,
   WorldwidePlace,
 } from '../types';
+import { readJsonResponse } from '../utils/api';
 import { formatINR } from '../utils/currency';
 import { WorldMap } from './WorldMap';
 
@@ -140,7 +141,7 @@ export function TripPlanner({
         const res = await fetch(
           `/api/weather?lat=${destPoint.lat}&lng=${destPoint.lng}&name=${encodeURIComponent(destPoint.name)}`
         );
-        const data = (await res.json()) as WeatherForecast & { error?: string };
+        const data = await readJsonResponse<WeatherForecast & { error?: string }>(res);
         if (!res.ok) throw new Error(data.error || 'Weather unavailable');
         if (active) {
           setWeather(data);
@@ -177,7 +178,7 @@ export function TripPlanner({
     }
     try {
       const res = await fetch(`/api/places/search?q=${encodeURIComponent(query.trim())}`);
-      const data = (await res.json()) as { places?: WorldwidePlace[] };
+      const data = await readJsonResponse<{ places?: WorldwidePlace[] }>(res);
       setter(data.places || []);
     } catch {
       setter([]);
@@ -216,11 +217,11 @@ export function TripPlanner({
           preferences,
         }),
       });
-      const data = (await res.json()) as {
+      const data = await readJsonResponse<{
         plan?: GeneratedItinerary;
         weather?: WeatherForecast | null;
         error?: string;
-      };
+      }>(res);
       if (!res.ok || !data.plan) {
         throw new Error(data.error || 'Could not generate personalized plan.');
       }

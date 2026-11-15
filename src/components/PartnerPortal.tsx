@@ -10,6 +10,7 @@ import type {
   SafeUser,
   UserRole,
 } from '../types';
+import { readJsonResponse } from '../utils/api';
 import { formatINR } from '../utils/currency';
 
 interface PartnerPortalProps {
@@ -68,17 +69,17 @@ export function PartnerPortal({ onListingsChanged }: PartnerPortalProps) {
         fetch('/api/bookings', { headers: authHeaders() }),
       ]);
       if (listRes.ok) {
-        const lData = (await listRes.json()) as { listings: Listing[] };
+        const lData = await readJsonResponse<{ listings: Listing[] }>(listRes);
         setProviderListings((lData.listings || []).filter((l) => l.providerId === user.id));
       }
       if (bkRes.ok) {
-        const bData = (await bkRes.json()) as { bookings: Booking[] };
+        const bData = await readJsonResponse<{ bookings: Booking[] }>(bkRes);
         setProviderBookings(bData.bookings || []);
       }
     } else if (user.role === 'admin') {
       const res = await fetch('/api/admin/overview', { headers: authHeaders() });
       if (res.ok) {
-        setAdminData((await res.json()) as AdminOverviewData);
+        setAdminData(await readJsonResponse<AdminOverviewData>(res));
       }
     }
   };
@@ -128,7 +129,7 @@ export function PartnerPortal({ onListingsChanged }: PartnerPortalProps) {
             .filter(Boolean),
         }),
       });
-      const data = (await res.json()) as { listing?: Listing; error?: string };
+      const data = await readJsonResponse<{ listing?: Listing; error?: string }>(res);
       if (!res.ok || !data.listing) {
         throw new Error(data.error || 'Could not add listing.');
       }

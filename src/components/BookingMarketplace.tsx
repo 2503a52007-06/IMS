@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Building2, Car, CheckCircle2, Clock, Search, XCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import type { Booking, Listing, SavedItinerary } from '../types';
+import { readJsonResponse } from '../utils/api';
 import { formatForeignOrigin, formatINR } from '../utils/currency';
 
 interface BookingMarketplaceProps {
@@ -55,11 +56,11 @@ export function BookingMarketplace({
         fetch('/api/ai/plans', { headers: authHeaders() }),
       ]);
       if (bkRes.ok) {
-        const bkData = (await bkRes.json()) as { bookings: Booking[] };
+        const bkData = await readJsonResponse<{ bookings: Booking[] }>(bkRes);
         setMyBookings(bkData.bookings || []);
       }
       if (plansRes.ok) {
-        const plData = (await plansRes.json()) as { plans: SavedItinerary[] };
+        const plData = await readJsonResponse<{ plans: SavedItinerary[] }>(plansRes);
         setSavedPlans(plData.plans || []);
       }
     } finally {
@@ -122,7 +123,7 @@ export function BookingMarketplace({
           travelerNotes,
         }),
       });
-      const data = (await res.json()) as { booking?: Booking; error?: string };
+      const data = await readJsonResponse<{ booking?: Booking; error?: string }>(res);
       if (!res.ok || !data.booking) {
         throw new Error(data.error || 'Could not submit booking request.');
       }

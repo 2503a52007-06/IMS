@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { hashPassword } from './auth.ts';
 import type {
@@ -11,10 +12,15 @@ import type {
   User,
 } from './types.ts';
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+const BUNDLED_DB_FILE = path.resolve(process.cwd(), 'data', 'voyageinr_db.json');
+const IS_VERCEL = Boolean(process.env.VERCEL || process.env.VERCEL_ENV);
+const DATA_DIR = IS_VERCEL
+  ? path.join(os.tmpdir(), 'voyageinr-data')
+  : path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'voyageinr_db.json');
 
 let state: DatabaseState | null = null;
+let initPromise: Promise<DatabaseState> | null = null;
 let writeQueue: Promise<void> = Promise.resolve();
 
 function buildSeedDestinations(): Destination[] {
@@ -626,24 +632,39 @@ async function seedDatabase(): Promise<DatabaseState> {
 
 export async function initDb(): Promise<DatabaseState> {
   if (state) return state;
+  if (initPromise) return initPromise;
 
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-  }
-
-  if (fs.existsSync(DB_FILE)) {
+  initPromise = (async () => {
     try {
-      const raw = fs.readFileSync(DB_FILE, 'utf-8');
-      state = JSON.parse(raw) as DatabaseState;
-      return state;
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
     } catch {
-      // Re-seed if file is corrupted
+      // Ignore directory creation errors on read-only filesystems
     }
-  }
 
-  state = await seedDatabase();
-  await persistDb();
-  return state;
+    for (const candidate of [DB_FILE, BUNDLED_DB_FILE]) {
+      if (fs.existsSync(candidate)) {
+        try {
+          const raw = fs.readFileSync(candidate, 'utf-8');
+          state = JSON.parse(raw) as DatabaseState;
+          return state;
+        } catch {
+          // Try next candidate or seed fresh
+        }
+      }
+    }
+
+    state = await seedDatabase();
+    await persistDb();
+    return state;
+  })();
+
+  try {
+    return await initPromise;
+  } finally {
+    initPromise = null;
+  }
 }
 
 export function getDb(): DatabaseState {
@@ -657,12 +678,16 @@ export function persistDb(): Promise<void> {
   if (!state) return Promise.resolve();
   const snapshot = JSON.stringify(state, null, 2);
   writeQueue = writeQueue.then(async () => {
-    if (!fs.existsSync(DATA_DIR)) {
-      await fs.promises.mkdir(DATA_DIR, { recursive: true });
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        await fs.promises.mkdir(DATA_DIR, { recursive: true });
+      }
+      const tmpFile = `${DB_FILE}.tmp`;
+      await fs.promises.writeFile(tmpFile, snapshot, 'utf-8');
+      await fs.promises.rename(tmpFile, DB_FILE);
+    } catch (err) {
+      console.warn('Database persistence skipped (non-writable storage):', err);
     }
-    const tmpFile = `${DB_FILE}.tmp`;
-    await fs.promises.writeFile(tmpFile, snapshot, 'utf-8');
-    await fs.promises.rename(tmpFile, DB_FILE);
   });
   return writeQueue;
 }

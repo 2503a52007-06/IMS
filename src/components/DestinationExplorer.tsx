@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowRight, Compass, Globe, MapPin, RefreshCw, Search } from 'lucide-react';
 import type { Continent, Destination, ExchangeRatesInfo, WorldwidePlace } from '../types';
+import { readJsonResponse } from '../utils/api';
 import { formatForeignOrigin, formatINR } from '../utils/currency';
 import { getDestinationImage } from '../utils/media';
 import { WorldMap } from './WorldMap';
@@ -63,7 +64,7 @@ export function DestinationExplorer({
       setSearching(true);
       try {
         const res = await fetch(`/api/places/search?q=${encodeURIComponent(trimmed)}`);
-        const data = (await res.json()) as { places?: WorldwidePlace[] };
+        const data = await readJsonResponse<{ places?: WorldwidePlace[] }>(res);
         setLivePlaces(data.places || []);
       } catch {
         setLivePlaces([]);

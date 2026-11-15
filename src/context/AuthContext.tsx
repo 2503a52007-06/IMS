@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import type { SafeUser } from '../types';
+import { readJsonResponse } from '../utils/api';
 
 interface AuthContextValue {
   user: SafeUser | null;
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) {
           throw new Error('Session invalid');
         }
-        const data = (await res.json()) as { user: SafeUser };
+        const data = await readJsonResponse<{ user: SafeUser }>(res);
         if (active) {
           setUser(data.user);
         }
@@ -77,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, portalScope }),
       });
-      const data = (await res.json()) as { token?: string; user?: SafeUser; error?: string };
+      const data = await readJsonResponse<{ token?: string; user?: SafeUser; error?: string }>(res);
       if (!res.ok || !data.token || !data.user) {
         throw new Error(data.error || 'Invalid credentials.');
       }
@@ -99,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name, email, password }),
     });
-    const data = (await res.json()) as { token?: string; user?: SafeUser; error?: string };
+    const data = await readJsonResponse<{ token?: string; user?: SafeUser; error?: string }>(res);
     if (!res.ok || !data.token || !data.user) {
       throw new Error(data.error || 'Registration failed.');
     }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Loader2, Send } from 'lucide-react';
 import type { WeatherForecast } from '../types';
+import { readJsonResponse } from '../utils/api';
 import { formatINR } from '../utils/currency';
 
 interface ChatMessage {
@@ -62,7 +63,7 @@ export function TravelChatbot({ activeContext, activeWeather }: TravelChatbotPro
           },
         }),
       });
-      const data = (await res.json()) as { reply?: string; error?: string };
+      const data = await readJsonResponse<{ reply?: string; error?: string }>(res);
       if (!res.ok || !data.reply) {
         throw new Error(data.error || 'Could not reach AI concierge.');
       }
