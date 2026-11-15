@@ -1,0 +1,8 @@
+{
+  "name": "IMS Project",
+  "description": "Worldwide AI travel planner, live weather concierge, interactive OpenStreetMap routing, and hotel \u0026 transport booking in Indian Rupees (₹).",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
